@@ -1,0 +1,17 @@
+<resources>
+
+    <!-- Color Picker -->
+    <string name="dialog_color_picker">Color Picker</string>
+    <string name="press_color_to_apply">Press on Color to apply</string>
+
+    <!-- Date Dialog -->
+    <string name="msg_invalidDateFormat">Cannot be saved: invalid format</string>
+
+    <!-- TorchService -->
+    <string name="torch_service_notification_content_title">Torch ON</string>
+    <string name="torch_service_notification_content_text">Touch if you want to torch off.</string>
+
+    <!-- typeface -->
+    <string name="pref_summary_font_list_preference">if you want use your font file, copy it to \'%1$s\'.</string>
+
+</resources>

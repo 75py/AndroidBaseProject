@@ -1,0 +1,6 @@
+<resources>
+
+  <bool name="is_jb_mr1_or_later">false</bool>
+  <bool name="is_jb_mr2_or_later">false</bool>
+
+</resources>

@@ -1,0 +1,13 @@
+<resources>
+
+    <!-- Date Dialog -->
+    <string name="msg_invalidDateFormat">保存できませんでした。フォーマットに誤りがあります。</string>
+
+    <!-- TorchService -->
+    <string name="torch_service_notification_content_title">ライト点灯中</string>
+    <string name="torch_service_notification_content_text">タップすると消灯します。</string>
+
+    <!-- typeface -->
+    <string name="pref_summary_font_list_preference">フォントを追加する場合は、%1$sに保存してください。</string>
+
+</resources>
