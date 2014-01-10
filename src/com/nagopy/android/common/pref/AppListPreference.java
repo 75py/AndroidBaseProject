@@ -17,10 +17,13 @@
 package com.nagopy.android.common.pref;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+
+import org.apache.commons.lang3.StringUtils;
 
 import android.content.Context;
 import android.content.DialogInterface;
@@ -31,12 +34,20 @@ import android.content.pm.PackageManager;
 import android.content.pm.PackageManager.NameNotFoundException;
 import android.graphics.drawable.Drawable;
 import android.preference.DialogPreference;
+import android.text.Editable;
+import android.text.InputType;
+import android.text.TextWatcher;
 import android.util.AttributeSet;
-import android.util.SparseBooleanArray;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.ArrayAdapter;
+import android.widget.AdapterView;
+import android.widget.AdapterView.OnItemClickListener;
+import android.widget.BaseAdapter;
 import android.widget.CheckedTextView;
+import android.widget.EditText;
+import android.widget.Filter;
+import android.widget.Filterable;
+import android.widget.LinearLayout;
 import android.widget.ListView;
 
 import com.nagopy.android.common.util.ImageUtil;
@@ -44,10 +55,11 @@ import com.nagopy.android.common.util.ImageUtil;
 /**
  * アプリ選択ダイアログ.
  */
-public class AppListPreference extends DialogPreference {
+public class AppListPreference extends DialogPreference implements TextWatcher {
 
     private ListView mListView;
     private AppListAdapter mAdapter;
+    private List<AppData> mAppList;
 
     public AppListPreference(Context context, AttributeSet attrs) {
         super(context, attrs);
@@ -58,12 +70,14 @@ public class AppListPreference extends DialogPreference {
 
     @Override
     protected View onCreateDialogView() {
+        Context context = getContext();
+
         if (mAdapter == null) {
             // 初回はアプリ一覧を読み込み、アダプタを作成
             mAdapter = makeAdapter();
         }
         // リストを作成
-        mListView = new ListView(getContext());
+        mListView = new ListView(context);
         mListView.setChoiceMode(ListView.CHOICE_MODE_MULTIPLE);
         mListView.setFastScrollEnabled(true);
 
@@ -73,7 +87,7 @@ public class AppListPreference extends DialogPreference {
         // 前回のチェック状態を取得（ソート前に取得）
         updateCheckedLastTimeFlag();
         // アプリをソート
-        mAdapter.sort(mAppComparator);
+        mAdapter.sort();
 
         // 前回のチェック状態を反映
         int count = mAdapter.getCount();
@@ -84,7 +98,33 @@ public class AppListPreference extends DialogPreference {
             }
         }
 
-        return mListView;
+        // リストビューにリスナーをセット
+        mListView.setOnItemClickListener(new OnItemClickListener() {
+            @Override
+            public void onItemClick(AdapterView<?> adapterView, View view, int position, long id) {
+                // チェック状態をAppDataに反映
+                AppData appData = mAdapter.getItem(position);
+                appData.checkedLastTime = !appData.checkedLastTime;
+                // 表示を更新
+                mAdapter.notifyDataSetChanged();
+            }
+        });
+
+        // フィルター用のEditTextを作成
+        EditText filterEditText = new EditText(context);
+        filterEditText.addTextChangedListener(this);
+        filterEditText.setInputType(InputType.TYPE_TEXT_VARIATION_FILTER);
+
+        // LinearLayoutを作成し、EditTextとListViewを並べる
+        LinearLayout linearLayout = new LinearLayout(context);
+        // 縦に並べる
+        linearLayout.setOrientation(LinearLayout.VERTICAL);
+        linearLayout.addView(filterEditText, LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT);
+        linearLayout.addView(mListView, LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.MATCH_PARENT);
+
+        return linearLayout;
     }
 
     private AppListAdapter makeAdapter() {
@@ -105,6 +145,10 @@ public class AppListPreference extends DialogPreference {
                 items.add(appData);
             }
         }
+
+        // アプリ一覧をフィールドにセット
+        mAppList = items;
+
         return new AppListAdapter(getContext(), items);
     }
 
@@ -127,15 +171,11 @@ public class AppListPreference extends DialogPreference {
 
                 // 選択されたデータを取得し、保存
                 Set<String> checkedPkgs = new HashSet<String>();
-                SparseBooleanArray positions = mListView.getCheckedItemPositions();
-                for (int i = 0; i < positions.size(); i++) {
-                    if (positions.valueAt(i)) {
-                        int checkedPosition = positions.keyAt(i);
-                        AppData appData = (AppData) mListView.getItemAtPosition(checkedPosition);
+                for (AppData appData : mAppList) {
+                    if (appData.checkedLastTime) {
                         checkedPkgs.add(appData.pkg);
                     }
                 }
-
                 edit.putStringSet(getKey(), checkedPkgs);
 
                 edit.apply();
@@ -144,16 +184,108 @@ public class AppListPreference extends DialogPreference {
         super.onClick(dialog, which);
     }
 
-    private class AppListAdapter extends ArrayAdapter<AppData> {
+    @Override
+    public void afterTextChanged(Editable s) {
+    }
+
+    @Override
+    public void beforeTextChanged(CharSequence s, int start, int count, int after) {
+    }
+
+    @Override
+    public void onTextChanged(CharSequence s, int start, int before, int count) {
+        // フィルタを更新
+        mAdapter.getFilter().filter(s);
+    }
+
+    private class AppListAdapter extends BaseAdapter implements Filterable {
 
         private PackageManager mPackageManager;
         private int mIconSize;
+        private Filter mFilter;
+        /** フィルタを掛ける前のオリジナルデータ */
+        public List<AppData> mOriginalItems;
+        /** フィルタ結果 */
+        public List<AppData> mFilteredItems;
 
         public AppListAdapter(Context context, List<AppData> items) {
-            super(context, android.R.layout.simple_list_item_single_choice, android.R.id.text1,
-                    items);
             mPackageManager = context.getPackageManager();
             mIconSize = ImageUtil.getIconSize(context);
+            mOriginalItems = items;
+            mFilteredItems = new ArrayList<AppListPreference.AppData>(items.size());
+            for (AppData appData : items) {
+                mFilteredItems.add(appData);
+            }
+        }
+
+        @Override
+        public int getCount() {
+            return mFilteredItems.size();
+        }
+
+        @Override
+        public AppData getItem(int position) {
+            return mFilteredItems.get(position);
+        }
+
+        @Override
+        public long getItemId(int position) {
+            return position;
+        }
+
+        /**
+         * アプリのソートを実行する.
+         */
+        public void sort() {
+            Collections.sort(mOriginalItems, mAppComparator);
+            Collections.sort(mFilteredItems, mAppComparator);
+        }
+
+        @Override
+        public Filter getFilter() {
+            if (mFilter == null) {
+                mFilter = new Filter() {
+                    @Override
+                    protected FilterResults performFiltering(CharSequence constraint) {
+                        FilterResults filterResults = new FilterResults();
+                        if (StringUtils.isEmpty(constraint)) {
+                            // テキストが空の場合、全てのアプリを表示
+                            filterResults.values = mOriginalItems;
+                            filterResults.count = mOriginalItems.size();
+                            return filterResults;
+                        } else {
+                            // 何らかの入力がある場合、アプリ名・パッケージ名と比較してみる
+                            List<AppData> filteredItems = new ArrayList<AppListPreference.AppData>();
+                            for (int i = 0; i < mOriginalItems.size(); i++) {
+                                AppData appData = mOriginalItems.get(i);
+                                if (appData.name.contains(constraint)
+                                        || appData.pkg.contains(constraint)) {
+                                    // アプリ名、パッケージ名のいずれかに含まれていれば追加
+                                    filteredItems.add(appData);
+                                }
+                            }
+                            // 結果を返す
+                            filterResults.values = filteredItems;
+                            filterResults.count = filteredItems.size();
+                            return filterResults;
+                        }
+                    }
+
+                    @SuppressWarnings("unchecked")
+                    @Override
+                    protected void publishResults(CharSequence constraint, FilterResults results) {
+                        // 変更を反映
+                        mFilteredItems = (List<AppData>) results.values;
+                        notifyDataSetChanged();
+
+                        // 表示を更新後、チェック状態を反映する
+                        for (int position = 0; position < getCount(); position++) {
+                            mListView.setItemChecked(position, getItem(position).checkedLastTime);
+                        }
+                    }
+                };
+            }
+            return mFilter;
         }
 
         @Override
@@ -193,8 +325,7 @@ public class AppListPreference extends DialogPreference {
             holder.titleTextView.setCompoundDrawables(appData.iconCache,
                     null, null, null);
 
-            // チェックを入れるべきか
-            // 不要かも？
+            // チェックを入れる操作はここでやるとうまくいかないので別の場所で
 
             return view;
         }
