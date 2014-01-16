@@ -16,7 +16,10 @@
 
 package com.nagopy.android.common.pref;
 
-import com.nagopy.android.common.util.DimenUtil;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+
+import org.apache.commons.lang3.StringUtils;
 
 import android.content.Context;
 import android.preference.Preference;
@@ -24,6 +27,8 @@ import android.util.AttributeSet;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
+
+import com.nagopy.android.common.util.DimenUtil;
 
 /**
  * テキストを表示するだけのPreference.
@@ -38,7 +43,34 @@ public class TextPreference extends Preference {
         int id = attrs.getAttributeResourceValue(null, "text", 0);
         mText = context.getString(id);
 
+        // 選択不可に
         setSelectable(false);
+
+        final String onClickMethodName = attrs.getAttributeValue(null, "onClick");
+        if (StringUtils.isNotBlank(onClickMethodName)) {
+            try {
+                final Method method = getContext().getClass().getMethod(onClickMethodName,
+                        Preference.class);
+                setSelectable(true);
+                setOnPreferenceClickListener(new OnPreferenceClickListener() {
+                    @Override
+                    public boolean onPreferenceClick(Preference preference) {
+                        try {
+                            return (Boolean) method.invoke(getContext(), preference);
+                        } catch (IllegalAccessException e) {
+                            e.printStackTrace();
+                        } catch (IllegalArgumentException e) {
+                            e.printStackTrace();
+                        } catch (InvocationTargetException e) {
+                            e.printStackTrace();
+                        }
+                        return false;
+                    }
+                });
+            } catch (NoSuchMethodException e) {
+                e.printStackTrace();
+            }
+        }
     }
 
     public void setText(String text) {
