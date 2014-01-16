@@ -19,6 +19,8 @@ package com.nagopy.android.common.util;
 import java.io.IOException;
 import java.io.InputStream;
 
+import com.nagopy.android.common.helper.ResourceDrawables;
+
 import android.content.ContentResolver;
 import android.content.Context;
 import android.content.res.Resources;
@@ -36,9 +38,80 @@ public class ImageUtil {
         return (int) context.getResources().getDimension(android.R.dimen.app_icon_size);
     }
 
-    public static Drawable getDrawable(Resources resources, Bitmap bitmap) {
-        Drawable drawable = new BitmapDrawable(resources, bitmap);
+    public static Drawable getDrawable(Context context, int resId) {
+        return ResourceDrawables.getInstance(context, context.getResources()).getDrawable(resId);
+    }
+
+    public static Bitmap reduceByMatrix(Bitmap bitmap, int width, int height) {
+        if (bitmap.getWidth() > width || bitmap.getHeight() > height) {
+            int w = bitmap.getWidth();
+            int h = bitmap.getHeight();
+            float newScale = Math.min((float) width / w, (float) height / h);
+            // 最終的なサイズにするための縮小率を求める
+            Matrix matrix = new Matrix();
+            matrix.postScale(newScale, newScale);
+            // 画像変形用のオブジェクトに拡大・縮小率をセットし
+            bitmap = Bitmap.createBitmap(bitmap, 0, 0, w, h, matrix, true);
+        }
+        return bitmap;
+    }
+
+    /**
+     * BitmapをDrawableに変換
+     * 
+     * @param bitmap
+     * @return
+     */
+    public static Drawable getDrawable(Resources res, Bitmap bitmap) {
+        Drawable drawable = new BitmapDrawable(res, bitmap);
         return drawable;
+    }
+
+    /**
+     * DrawableをBitmapに変換
+     * 
+     * @param drawable
+     * @return
+     */
+    public static Bitmap getBitmap(Drawable drawable) {
+        return ((BitmapDrawable) drawable).getBitmap();
+    }
+
+    /** simply resizes a given drawable resource to the given width and height */
+    public static Drawable resizeImage(Context context, Drawable drawable, int iconWidth,
+            int iconHeight) {
+
+        // load the origial Bitmap
+        Bitmap BitmapOrg = ((BitmapDrawable) drawable).getBitmap();
+
+        int width = BitmapOrg.getWidth();
+        int height = BitmapOrg.getHeight();
+        int newWidth = iconWidth;
+        int newHeight = iconHeight;
+
+        // calculate the scale
+        float scaleWidth = ((float) newWidth) / width;
+        float scaleHeight = ((float) newHeight) / height;
+
+        // create a matrix for the manipulation
+        Matrix matrix = new Matrix();
+        // resize the Bitmap
+        matrix.postScale(scaleWidth, scaleHeight);
+
+        // if you want to rotate the Bitmap
+        // matrix.postRotate(45);
+
+        // recreate the new Bitmap
+        Bitmap resizedBitmap = Bitmap.createBitmap(BitmapOrg, 0, 0, width,
+                height, matrix, true);
+        // BitmapOrg.recycle();
+
+        // make a Drawable from Bitmap to allow to set the Bitmap
+        // to the ImageView, ImageButton or what ever
+        Drawable result = getDrawable(context.getResources(), resizedBitmap);
+        // resizedBitmap.recycle();
+        return result;
+
     }
 
     public static Bitmap loadBitmap(ContentResolver contentResolver, Uri uri, int width, int height)
