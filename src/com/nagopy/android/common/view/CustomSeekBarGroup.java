@@ -16,6 +16,8 @@
 
 package com.nagopy.android.common.view;
 
+import java.util.Locale;
+
 import android.content.Context;
 import android.util.AttributeSet;
 import android.view.Gravity;
@@ -195,6 +197,15 @@ public class CustomSeekBarGroup extends LinearLayout {
     }
 
     protected String createTextFormat(int value) {
-        return String.valueOf(value);
+        switch (sb.getScale()) {
+            case 1:
+                return String.valueOf(value);
+            default:
+                // TODO 何というか、このクラス自体作り直したいね
+                double dispValue = (double) value / sb.getScale();
+                // 10、100とか前提
+                String format = "%." + (String.valueOf(sb.getScale()).length() - 1) + "f";
+                return String.format(Locale.getDefault(), format, dispValue);
+        }
     }
 }
