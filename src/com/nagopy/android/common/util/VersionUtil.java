@@ -24,17 +24,35 @@ public class VersionUtil {
     }
 
     /**
-     * 4.2以上ならtrueを返す.
+     * 4.1以上ならtrueを返す.<br>
+     * {@link Build.VERSION_CODES#JELLY_BEAN}
+     */
+    public static Boolean isJBOrLater() {
+        return Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN;
+    }
+
+    /**
+     * 4.2以上ならtrueを返す.<br>
+     * {@link Build.VERSION_CODES#JELLY_BEAN_MR1}
      */
     public static Boolean isJBmr1OrLater() {
         return Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR1;
     }
 
     /**
-     * 4.3以上ならtrueを返す.
+     * 4.3以上ならtrueを返す.<br>
+     * {@link Build.VERSION_CODES#JELLY_BEAN_MR2}
      */
     public static Boolean isJBmr2OrLater() {
         return Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR2;
+    }
+
+    /**
+     * 4.4以上ならtrueを返す.<br>
+     * {@link Build.VERSION_CODES#KITKAT}
+     */
+    public static Boolean isKitKatOrLator() {
+        return Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT;
     }
 
 }

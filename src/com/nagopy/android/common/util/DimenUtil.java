@@ -33,5 +33,4 @@ public class DimenUtil {
         // 50 dp を pixel に変換する ( dp × density + 0.5f（四捨五入) )
         return (int) (dp * density + 0.5f);
     }
-
 }
