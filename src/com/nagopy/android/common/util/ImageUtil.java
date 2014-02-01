@@ -23,6 +23,8 @@ import com.nagopy.android.common.helper.ResourceDrawables;
 
 import android.content.ContentResolver;
 import android.content.Context;
+import android.content.pm.PackageManager;
+import android.content.pm.PackageManager.NameNotFoundException;
 import android.content.res.Resources;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
@@ -34,8 +36,32 @@ import android.util.Log;
 
 public class ImageUtil {
 
+    /**
+     * アイコンサイズを取得する.
+     * 
+     * @param context {@link Context}
+     * @return アイコンサイズ
+     */
     public static int getIconSize(Context context) {
         return (int) context.getResources().getDimension(android.R.dimen.app_icon_size);
+    }
+
+    /**
+     * アプリケーションのアイコンを取得する.<br>
+     * アプリが見つからない場合、nullを返す。
+     * 
+     * @param context {@link Context}
+     * @param pkg パッケージ名
+     * @return アイコン。アプリが見つからない場合はnull
+     */
+    public static Drawable getApplicationIcon(Context context, String pkg) {
+        try {
+            PackageManager packageManager = context.getPackageManager();
+            Drawable icon = packageManager.getApplicationIcon(pkg);
+            return icon;
+        } catch (NameNotFoundException e) {
+            return null;
+        }
     }
 
     public static Drawable getDrawable(Context context, int resId) {
