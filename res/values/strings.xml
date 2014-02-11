@@ -14,4 +14,6 @@
     <!-- typeface -->
     <string name="pref_summary_font_list_preference">if you want use your font file, copy it to \'%1$s\'.</string>
 
+    <!-- Check all -->
+    <string name="check_all_reverse">Check/Uncheck ALL</string>
 </resources>

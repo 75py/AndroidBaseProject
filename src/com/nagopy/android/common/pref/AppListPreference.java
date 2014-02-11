@@ -43,19 +43,25 @@ import android.view.ViewGroup;
 import android.widget.AdapterView;
 import android.widget.AdapterView.OnItemClickListener;
 import android.widget.BaseAdapter;
+import android.widget.CheckBox;
 import android.widget.CheckedTextView;
+import android.widget.CompoundButton;
+import android.widget.CompoundButton.OnCheckedChangeListener;
 import android.widget.EditText;
 import android.widget.Filter;
 import android.widget.Filterable;
 import android.widget.LinearLayout;
 import android.widget.ListView;
 
+import com.nagopy.android.common.R;
+import com.nagopy.android.common.util.DimenUtil;
 import com.nagopy.android.common.util.ImageUtil;
 
 /**
  * アプリ選択ダイアログ.
  */
-public class AppListPreference extends DialogPreference implements TextWatcher {
+public class AppListPreference extends DialogPreference implements TextWatcher,
+        OnCheckedChangeListener {
 
     private ListView mListView;
     private AppListAdapter mAdapter;
@@ -115,12 +121,23 @@ public class AppListPreference extends DialogPreference implements TextWatcher {
         filterEditText.addTextChangedListener(this);
         filterEditText.setInputType(InputType.TYPE_TEXT_VARIATION_FILTER);
 
+        // 全チェックボタンを作成
+        CheckBox checkBox = new CheckBox(context);
+        checkBox.setText(R.string.check_all_reverse);
+        checkBox.setOnCheckedChangeListener(this);
+
+        //
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT);
+        params.bottomMargin = DimenUtil.getPixelFromDp(context, 4);
+
         // LinearLayoutを作成し、EditTextとListViewを並べる
         LinearLayout linearLayout = new LinearLayout(context);
         // 縦に並べる
         linearLayout.setOrientation(LinearLayout.VERTICAL);
-        linearLayout.addView(filterEditText, LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT);
+        linearLayout.addView(filterEditText, params);
+        linearLayout.addView(checkBox, params);
         linearLayout.addView(mListView, LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.MATCH_PARENT);
 
@@ -196,6 +213,23 @@ public class AppListPreference extends DialogPreference implements TextWatcher {
     public void onTextChanged(CharSequence s, int start, int before, int count) {
         // フィルタを更新
         mAdapter.getFilter().filter(s);
+    }
+
+    @Override
+    public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+        // チェックを全てONまたはOFF
+        for (AppData appData : mAppList) {
+            appData.checkedLastTime = isChecked;
+        }
+
+        // 表示中のもののチェック状態を切り替え
+        int count = mListView.getCount();
+        for (int i = 0; i < count; i++) {
+            mListView.setItemChecked(i, isChecked);
+        }
+
+        // 一応更新
+        mAdapter.notifyDataSetChanged();
     }
 
     private class AppListAdapter extends BaseAdapter implements Filterable {
