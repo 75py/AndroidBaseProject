@@ -16,8 +16,14 @@
 
 package com.nagopy.android.common.helper;
 
+import java.util.ArrayList;
+import java.util.List;
+
+import android.content.Context;
 import android.graphics.SurfaceTexture;
 import android.hardware.Camera;
+import android.os.PowerManager;
+import android.os.PowerManager.WakeLock;
 
 /**
  * フラッシュライトを使用するためのクラス.
@@ -30,7 +36,19 @@ public class TorchHelper {
     /** ライトの状態を保持するフィールド */
     private Boolean mStatus = false;
 
+    private WakeLock mWakeLock;
+
     private static final TorchHelper instance = new TorchHelper();
+
+    private static final String TAG = "TorchHelper";
+
+    /** タイムアウト時間（ミリ秒） */
+    public Long timeout = DEFAULT_TIMEOUT_MS;
+
+    /** デフォルトタイムアウト時間（ミリ秒） */
+    public static final Long DEFAULT_TIMEOUT_MS = 10 * 60 * 1000L;
+
+    public List<TorchStatusListener> listener = new ArrayList<TorchHelper.TorchStatusListener>();
 
     private TorchHelper() {
     }
@@ -44,10 +62,10 @@ public class TorchHelper {
 
     /**
      * ライトを点灯する.
-     *
+     * 
      * @return ライトが点灯すればtrue、失敗した場合はfalseを返す。
      */
-    public synchronized Boolean on() {
+    public synchronized Boolean on(Context context) {
         if (isON()) {
             return true;
         }
@@ -60,11 +78,35 @@ public class TorchHelper {
             mCamera.setPreviewTexture(new SurfaceTexture(0));
             mCamera.startPreview();
             mStatus = true;
-            return true;
         } catch (Exception e) {
             mStatus = false;
-            return false;
         }
+
+        if (mStatus) {
+            try {
+                // もしWakeLock中ならいったんリリース
+                if (mWakeLock != null && mWakeLock.isHeld()) {
+                    mWakeLock.release();
+                    mWakeLock = null;
+                }
+
+                // WakeLock
+                PowerManager powerManager = (PowerManager) context
+                        .getSystemService(Context.POWER_SERVICE);
+                mWakeLock = powerManager.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, TAG);
+                mWakeLock.acquire(timeout != null && timeout > 0 ? timeout : DEFAULT_TIMEOUT_MS);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+
+            if (listener != null) {
+                for (TorchStatusListener l : listener) {
+                    l.onTorchON();
+                }
+            }
+        }
+
+        return mStatus;
     }
 
     /**
@@ -82,12 +124,29 @@ public class TorchHelper {
             } catch (Exception e) {
                 e.printStackTrace();
             }
+
+            try {
+                if (mWakeLock != null && mWakeLock.isHeld()) {
+                    mWakeLock.release();
+                    mWakeLock = null;
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+
+            if (listener != null) {
+                for (TorchStatusListener l : listener) {
+                    l.onTorchOFF();
+                }
+            }
+
+            // mStatus = false;
         }
     }
 
     /**
      * ライトが点灯しているかを取得する.
-     *
+     * 
      * @return ライトが点灯している場合はtrue、それ以外はfalse
      */
     public synchronized Boolean isON() {
@@ -96,16 +155,24 @@ public class TorchHelper {
 
     /**
      * ライトのオン・オフを切り替える.
-     *
+     * 
      * @return ライトが点灯している場合はtrue、それ以外はfalse
      */
-    public synchronized Boolean toggle() {
+    public synchronized Boolean toggle(Context context) {
         if (isON()) {
             off();
         } else {
-            on();
+            on(context);
         }
         return isON();
+    }
+
+    public interface TorchStatusListener {
+        /** ライトが点灯したとき */
+        void onTorchON();
+
+        /** ライトが消灯したとき */
+        void onTorchOFF();
     }
 
 }
